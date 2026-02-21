@@ -1,0 +1,51 @@
+name: build-podman-from-source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout podman
+        uses: actions/checkout@v6
+        with:
+          repository: containers/podman
+          ref: v5.8.0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git make gcc pkg-config \
+            btrfs-progs libbtrfs-dev \
+            libdevmapper-dev \
+            libgpgme-dev \
+            libassuan-dev \
+            libglib2.0-dev \
+            libseccomp-dev \
+            libselinux1-dev \
+            go-md2man \
+            iptables \
+            uidmap \
+            slirp4netns \
+            fuse-overlayfs
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          # Podman versions may require a specific Go version; adjust as needed
+          go-version: stable
+
+      - name: Build podman
+        run: |
+          make BUILDTAGS="seccomp selinux"
+          ./bin/podman --version
+
+      - name: Upload podman binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: podman-bin
+          path: bin/podman
