@@ -34,6 +34,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      PREFIX: /usr/local
     steps:
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -65,8 +67,19 @@ jobs:
           git clone --depth=1 --branch ${{ inputs.podman_version }} \
             https://github.com/containers/podman.git /tmp/podman
           cd /tmp/podman
-          make BUILDTAGS="selinux seccomp" PREFIX=/usr
-          cp bin/podman ${{ runner.temp }}/out/bin/podman
+
+          # Rewrite hardcoded /etc/containers/ → $PREFIX/etc/containers/
+          # so the binary never looks in /etc (same technique as Homebrew)
+          find . -name '*.go' -exec grep -l '/etc/containers/' {} + \
+            | xargs sed -i 's|/etc/containers/|${{ env.PREFIX }}/etc/containers/|g'
+
+          make BUILDTAGS="selinux seccomp" \
+            PREFIX=${{ env.PREFIX }} \
+            HELPER_BINARIES_DIR=${{ env.PREFIX }}/libexec/podman
+
+          cp bin/podman          ${{ runner.temp }}/out/bin/podman
+          cp bin/quadlet         ${{ runner.temp }}/out/libexec/podman/quadlet
+          cp bin/rootlessport    ${{ runner.temp }}/out/libexec/podman/rootlessport
 
       # ── conmon ──────────────────────────────────────────────
       - name: Build conmon
@@ -74,7 +87,7 @@ jobs:
           git clone --depth=1 --branch ${{ inputs.conmon_version }} \
             https://github.com/containers/conmon.git /tmp/conmon
           cd /tmp/conmon
-          make PREFIX=/usr
+          make PREFIX=${{ env.PREFIX }}
           cp bin/conmon ${{ runner.temp }}/out/bin/conmon
 
       # ── crun (pre-built static binary) ─────────────────────
@@ -139,6 +152,12 @@ jobs:
           ${{ runner.temp }}/out/bin/crun --version
           echo "=== catatonit ==="
           file ${{ runner.temp }}/out/libexec/podman/catatonit
+          echo "=== quadlet ==="
+          file ${{ runner.temp }}/out/libexec/podman/quadlet
+          echo "=== rootlessport ==="
+          file ${{ runner.temp }}/out/libexec/podman/rootlessport
+          echo "=== config path check ==="
+          strings ${{ runner.temp }}/out/bin/podman | grep -o '/usr/local/etc/containers' | head -1
 
       # ── package ─────────────────────────────────────────────
       - name: Create tarball
