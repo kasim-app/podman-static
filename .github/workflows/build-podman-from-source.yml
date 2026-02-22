@@ -73,7 +73,7 @@ jobs:
           find . -name '*.go' -exec grep -l '/etc/containers/' {} + \
             | xargs sed -i 's|/etc/containers/|${{ env.PREFIX }}/etc/containers/|g'
 
-          make BUILDTAGS="selinux seccomp" \
+          make BUILDTAGS="selinux seccomp systemd" \
             PREFIX=${{ env.PREFIX }} \
             HELPER_BINARIES_DIR=${{ env.PREFIX }}/libexec/podman
 
