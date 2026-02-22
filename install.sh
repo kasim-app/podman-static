@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO="kasim-app/podman-static"
+PREFIX="/opt/podman"
 
 echo "Installing host dependencies..."
 sudo apt-get update -y
@@ -13,16 +14,15 @@ echo "Downloading podman bundle..."
 curl -fsSL -o /tmp/podman-bundle.tar.gz \
   "https://github.com/${REPO}/releases/latest/download/podman-bundle-linux-amd64.tar.gz"
 
-echo "Installing podman bundle..."
-sudo tar xzf /tmp/podman-bundle.tar.gz -C /usr/local
+echo "Installing podman bundle to ${PREFIX}..."
+sudo mkdir -p "${PREFIX}"
+sudo tar xzf /tmp/podman-bundle.tar.gz -C "${PREFIX}"
 rm -f /tmp/podman-bundle.tar.gz
 
-# ── Rootless: ensure subordinate UID/GID ranges ──────────
-CURRENT_USER="${SUDO_USER:-$(whoami)}"
-if ! grep -q "^${CURRENT_USER}:" /etc/subuid 2>/dev/null; then
-  echo "Adding subuid/subgid ranges for ${CURRENT_USER}..."
-  sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "${CURRENT_USER}"
-fi
+# ── Add to PATH via symlinks ─────────────────────────────
+sudo ln -sf "${PREFIX}/bin/podman" /usr/local/bin/podman
+sudo ln -sf "${PREFIX}/bin/conmon" /usr/local/bin/conmon
+sudo ln -sf "${PREFIX}/bin/crun"   /usr/local/bin/crun
 
 echo "Verifying..."
 podman --version

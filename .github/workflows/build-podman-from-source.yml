@@ -35,7 +35,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     env:
-      PREFIX: /usr/local
+      PREFIX: /opt/podman
     steps:
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -157,7 +157,7 @@ jobs:
           echo "=== rootlessport ==="
           file ${{ runner.temp }}/out/libexec/podman/rootlessport
           echo "=== config path check ==="
-          strings ${{ runner.temp }}/out/bin/podman | grep -o '/usr/local/etc/containers' | head -1
+          strings ${{ runner.temp }}/out/bin/podman | grep -o '/opt/podman/etc/containers' | head -1
 
       # ── package ─────────────────────────────────────────────
       - name: Create tarball
