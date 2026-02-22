@@ -22,8 +22,9 @@ sudo mkdir -p "${PREFIX}"
 sudo tar xzf /tmp/podman-bundle.tar.gz -C "${PREFIX}"
 rm -f /tmp/podman-bundle.tar.gz
 
-# Add to PATH (prepend so bundled bins take priority)
-echo 'export PATH="/opt/podman/bin:$PATH"' | sudo tee "${PROFILE}" > /dev/null
+# Add to PATH and point podman at bundled config
+printf 'export PATH="/opt/podman/bin:$PATH"\nexport CONTAINERS_CONF="/opt/podman/etc/containers/containers.conf"\n' \
+  | sudo tee "${PROFILE}" > /dev/null
 
 echo "Verifying (using new shell env)..."
 export PATH="${PREFIX}/bin:$PATH"
