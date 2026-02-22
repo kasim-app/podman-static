@@ -1,0 +1,164 @@
+name: build-podman-bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      podman_version:
+        description: "Podman version (tag)"
+        required: true
+        default: "v5.8.0"
+      crun_version:
+        description: "crun version"
+        required: true
+        default: "1.26"
+      conmon_version:
+        description: "conmon version (tag)"
+        required: true
+        default: "v2.2.1"
+      netavark_version:
+        description: "netavark version (tag)"
+        required: true
+        default: "v1.17.2"
+      aardvark_dns_version:
+        description: "aardvark-dns version (tag)"
+        required: true
+        default: "v1.17.0"
+      catatonit_version:
+        description: "catatonit version (tag)"
+        required: true
+        default: "v0.2.1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake btrfs-progs gcc git go-md2man \
+            iptables libassuan-dev libbtrfs-dev libc6-dev libdevmapper-dev \
+            libglib2.0-dev libgpgme-dev libgpg-error-dev libprotobuf-dev \
+            libprotobuf-c-dev libseccomp-dev libselinux1-dev libsystemd-dev \
+            libtool make pkg-config protobuf-compiler
+
+      - name: Set up output directory
+        run: |
+          mkdir -p ${{ runner.temp }}/out/bin
+          mkdir -p ${{ runner.temp }}/out/libexec/podman
+          mkdir -p ${{ runner.temp }}/out/etc/containers
+
+      # ── podman ──────────────────────────────────────────────
+      - name: Build podman
+        run: |
+          git clone --depth=1 --branch ${{ inputs.podman_version }} \
+            https://github.com/containers/podman.git /tmp/podman
+          cd /tmp/podman
+          make BUILDTAGS="selinux seccomp" PREFIX=/usr
+          cp bin/podman ${{ runner.temp }}/out/bin/podman
+
+      # ── conmon ──────────────────────────────────────────────
+      - name: Build conmon
+        run: |
+          git clone --depth=1 --branch ${{ inputs.conmon_version }} \
+            https://github.com/containers/conmon.git /tmp/conmon
+          cd /tmp/conmon
+          make PREFIX=/usr
+          cp bin/conmon ${{ runner.temp }}/out/bin/conmon
+
+      # ── crun (pre-built static binary) ─────────────────────
+      - name: Download crun
+        run: |
+          curl -fsSL -o ${{ runner.temp }}/out/bin/crun \
+            "https://github.com/containers/crun/releases/download/${{ inputs.crun_version }}/crun-${{ inputs.crun_version }}-linux-amd64"
+          chmod +x ${{ runner.temp }}/out/bin/crun
+
+      # ── netavark ────────────────────────────────────────────
+      - name: Build netavark
+        run: |
+          git clone --depth=1 --branch ${{ inputs.netavark_version }} \
+            https://github.com/containers/netavark.git /tmp/netavark
+          cd /tmp/netavark
+          make
+          cp bin/netavark ${{ runner.temp }}/out/libexec/podman/netavark
+
+      # ── aardvark-dns ────────────────────────────────────────
+      - name: Build aardvark-dns
+        run: |
+          git clone --depth=1 --branch ${{ inputs.aardvark_dns_version }} \
+            https://github.com/containers/aardvark-dns.git /tmp/aardvark-dns
+          cd /tmp/aardvark-dns
+          make
+          cp bin/aardvark-dns ${{ runner.temp }}/out/libexec/podman/aardvark-dns
+
+      # ── catatonit ───────────────────────────────────────────
+      - name: Build catatonit
+        run: |
+          git clone --depth=1 --branch ${{ inputs.catatonit_version }} \
+            https://github.com/openSUSE/catatonit.git /tmp/catatonit
+          cd /tmp/catatonit
+          autoreconf -fi
+          ./configure LDFLAGS="-static"
+          make
+          cp catatonit ${{ runner.temp }}/out/libexec/podman/catatonit
+
+      # ── config files ────────────────────────────────────────
+      - name: Create default configs
+        run: |
+          echo '{"default":[{"type":"insecureAcceptAnything"}]}' \
+            > ${{ runner.temp }}/out/etc/containers/policy.json
+
+          cat > ${{ runner.temp }}/out/etc/containers/storage.conf << 'EOF'
+          [storage]
+          driver="overlay"
+          EOF
+
+          cat > ${{ runner.temp }}/out/etc/containers/registries.conf << 'EOF'
+          unqualified-search-registries=["docker.io"]
+          EOF
+
+      # ── verify ──────────────────────────────────────────────
+      - name: Print versions
+        run: |
+          echo "=== podman ==="
+          ${{ runner.temp }}/out/bin/podman --version
+          echo "=== conmon ==="
+          ${{ runner.temp }}/out/bin/conmon --version
+          echo "=== crun ==="
+          ${{ runner.temp }}/out/bin/crun --version
+          echo "=== catatonit ==="
+          file ${{ runner.temp }}/out/libexec/podman/catatonit
+
+      # ── package ─────────────────────────────────────────────
+      - name: Create tarball
+        run: |
+          cd ${{ runner.temp }}/out
+          tar czf ${{ runner.temp }}/podman-bundle-linux-amd64.tar.gz .
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.podman_version }}
+          name: "podman ${{ inputs.podman_version }} bundle"
+          body: |
+            ## Components
+            - podman ${{ inputs.podman_version }}
+            - crun ${{ inputs.crun_version }}
+            - conmon ${{ inputs.conmon_version }}
+            - netavark ${{ inputs.netavark_version }}
+            - aardvark-dns ${{ inputs.aardvark_dns_version }}
+            - catatonit ${{ inputs.catatonit_version }}
+          files: |
+            ${{ runner.temp }}/podman-bundle-linux-amd64.tar.gz
+          overwrite_files: true
