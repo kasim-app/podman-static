@@ -132,14 +132,14 @@ jobs:
           echo '{"default":[{"type":"insecureAcceptAnything"}]}' \
             > ${{ runner.temp }}/out/etc/containers/policy.json
 
-          cat > ${{ runner.temp }}/out/etc/containers/storage.conf << 'EOF'
-          [storage]
-          driver="overlay"
-          EOF
+          printf '[storage]\ndriver="overlay"\n' \
+            > ${{ runner.temp }}/out/etc/containers/storage.conf
 
-          cat > ${{ runner.temp }}/out/etc/containers/registries.conf << 'EOF'
-          unqualified-search-registries=["docker.io"]
-          EOF
+          printf 'unqualified-search-registries=["docker.io"]\n' \
+            > ${{ runner.temp }}/out/etc/containers/registries.conf
+
+          printf '[engine]\nconmon_path = ["/opt/podman/bin/conmon"]\nhelper_binaries_dir = ["/opt/podman/libexec/podman"]\n\n[engine.runtimes]\ncrun = ["/opt/podman/bin/crun"]\n' \
+            > ${{ runner.temp }}/out/etc/containers/containers.conf
 
       # ── verify ──────────────────────────────────────────────
       - name: Print versions
