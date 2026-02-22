@@ -7,8 +7,9 @@ PREFIX="/opt/podman"
 echo "Installing host dependencies..."
 sudo apt-get update -y
 sudo apt-get install -y \
-  uidmap passt \
-  libgpgme11t64 libseccomp2 libdevmapper1.02.1 libsystemd0
+  uidmap passt slirp4netns fuse-overlayfs \
+  libgpgme11t64 libseccomp2 libdevmapper1.02.1 libsystemd0 \
+  libglib2.0-0 libgpg-error0 libassuan0 libprotobuf-c1 libprotobuf32t64
 
 echo "Downloading podman bundle..."
 curl -fsSL -o /tmp/podman-bundle.tar.gz \
