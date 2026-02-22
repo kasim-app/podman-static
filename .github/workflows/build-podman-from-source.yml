@@ -138,7 +138,7 @@ jobs:
           printf 'unqualified-search-registries=["docker.io"]\n' \
             > ${{ runner.temp }}/out/etc/containers/registries.conf
 
-          printf '[engine]\nconmon_path = ["/opt/podman/bin/conmon"]\nhelper_binaries_dir = ["/opt/podman/libexec/podman"]\n\n[engine.runtimes]\ncrun = ["/opt/podman/bin/crun"]\n' \
+          printf '[engine]\nruntime = "crun"\nconmon_path = ["/opt/podman/bin/conmon"]\nhelper_binaries_dir = ["/opt/podman/libexec/podman"]\n\n[engine.runtimes]\ncrun = ["/opt/podman/bin/crun"]\n' \
             > ${{ runner.temp }}/out/etc/containers/containers.conf
 
       # ── verify ──────────────────────────────────────────────
