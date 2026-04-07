@@ -6,11 +6,11 @@ on:
       podman_version:
         description: "Podman version (tag)"
         required: true
-        default: "v5.8.0"
+        default: "v5.8.1"
       crun_version:
         description: "crun version"
         required: true
-        default: "1.26"
+        default: "1.27"
       conmon_version:
         description: "conmon version (tag)"
         required: true
