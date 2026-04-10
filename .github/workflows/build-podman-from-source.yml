@@ -138,7 +138,7 @@ jobs:
           printf 'unqualified-search-registries=["docker.io"]\n' \
             > ${{ runner.temp }}/out/etc/containers/registries.conf
 
-          printf '[engine]\nruntime = "crun"\nconmon_path = ["/opt/podman/bin/conmon"]\nhelper_binaries_dir = ["/opt/podman/libexec/podman"]\n\n[engine.runtimes]\ncrun = ["/opt/podman/bin/crun"]\n' \
+          printf '[engine]\nruntime = "crun"\nconmon_path = ["${{ env.PREFIX }}/bin/conmon"]\nhelper_binaries_dir = ["${{ env.PREFIX }}/libexec/podman"]\n\n[engine.runtimes]\ncrun = ["${{ env.PREFIX }}/bin/crun"]\n' \
             > ${{ runner.temp }}/out/etc/containers/containers.conf
 
       # ── verify ──────────────────────────────────────────────
@@ -157,7 +157,7 @@ jobs:
           echo "=== rootlessport ==="
           file ${{ runner.temp }}/out/libexec/podman/rootlessport
           echo "=== config path check ==="
-          strings ${{ runner.temp }}/out/bin/podman | grep -o '/opt/podman/etc/containers' | head -1
+          strings ${{ runner.temp }}/out/bin/podman | grep -o '${{ env.PREFIX }}/etc/containers' | head -1
 
       # ── package ─────────────────────────────────────────────
       - name: Create tarball
