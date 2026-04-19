@@ -31,4 +31,44 @@ export PATH="${PREFIX}/bin:$PATH"
 podman --version
 podman info 2>&1 | grep -A2 'ociRuntime'
 
+echo "Setting up systemd socket activation..."
+mkdir -p ~/.config/systemd/user
+
+cat > ~/.config/systemd/user/podman.socket << 'EOF'
+[Unit]
+Description=Podman API Socket
+Documentation=man:podman-system-service(1)
+
+[Socket]
+ListenStream=%t/podman/podman.sock
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target
+EOF
+
+cat > ~/.config/systemd/user/podman.service << 'EOF'
+[Unit]
+Description=Podman API Service
+Requires=podman.socket
+After=podman.socket
+Documentation=man:podman-system-service(1)
+StartLimitIntervalSec=0
+
+[Service]
+Delegate=true
+Type=exec
+KillMode=process
+Environment=LOGGING="--log-level=info"
+ExecStart=/opt/podman/bin/podman $LOGGING system service
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now podman.socket
+loginctl enable-linger "$USER"
+echo "Podman socket active at /run/user/$(id -u)/podman/podman.sock"
+
 echo "Done. Log out and back in (or run: source ${PROFILE})"

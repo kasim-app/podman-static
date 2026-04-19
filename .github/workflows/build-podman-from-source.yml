@@ -49,9 +49,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            autoconf automake btrfs-progs gcc git go-md2man \
-            iptables libassuan-dev libbtrfs-dev libc6-dev libdevmapper-dev \
-            libglib2.0-dev libgpgme-dev libgpg-error-dev libprotobuf-dev \
+            autoconf automake gcc git go-md2man \
+            libc6-dev \
+            libglib2.0-dev libprotobuf-dev \
             libprotobuf-c-dev libseccomp-dev libselinux1-dev libsystemd-dev \
             libtool make pkg-config protobuf-compiler
 
@@ -73,7 +73,7 @@ jobs:
           find . -name '*.go' -exec grep -l '/etc/containers/' {} + \
             | xargs sed -i 's|/etc/containers/|${{ env.PREFIX }}/etc/containers/|g'
 
-          make BUILDTAGS="selinux seccomp systemd" \
+          make BUILDTAGS="selinux seccomp systemd exclude_graphdriver_btrfs exclude_graphdriver_devicemapper containers_image_openpgp" \
             PREFIX=${{ env.PREFIX }} \
             HELPER_BINARIES_DIR=${{ env.PREFIX }}/libexec/podman
 
