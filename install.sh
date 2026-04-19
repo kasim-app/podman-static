@@ -26,6 +26,11 @@ rm -f /tmp/podman-bundle.tar.gz
 printf 'export PATH="/opt/podman/bin:$PATH"\nexport CONTAINERS_CONF="/opt/podman/etc/containers/containers.conf"\n' \
 | sudo tee "${PROFILE}" > /dev/null
 
+# Install quadlet as a user systemd generator so .container files work
+GENERATOR_DIR="/usr/lib/systemd/user-generators"
+sudo mkdir -p "${GENERATOR_DIR}"
+sudo ln -sf "${PREFIX}/libexec/podman/quadlet" "${GENERATOR_DIR}/podman-user-generator"
+
 echo "Verifying (using new shell env)..."
 export PATH="${PREFIX}/bin:$PATH"
 podman --version
